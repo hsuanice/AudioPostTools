@@ -41,24 +41,32 @@ from queue import Empty, Queue
 _MISSING_PACKAGES = [name for name in ("tkinterdnd2", "openpyxl") if importlib.util.find_spec(name) is None]
 if _MISSING_PACKAGES:
     import tkinter as _tk
-    from tkinter import messagebox as _messagebox
 
+    # A plain Tk window, not tkinter.messagebox: a native macOS alert can
+    # crash Tk (see the note on dialogs in ui_components.py), and
+    # ui_components itself needs tkinterdnd2.
     _root = _tk.Tk()
-    _root.withdraw()
-    _messagebox.showerror(
-        "Wave Manager for Post — Missing Python package(s)",
-        "This app needs the following Python package(s), which aren't installed:\n\n"
+    _root.title("Wave Manager for Post — Missing Python package(s)")
+    _tk.Label(
+        _root,
+        justify=_tk.LEFT,
+        padx=18,
+        pady=16,
+        text="This app needs the following Python package(s), which aren't installed:\n\n"
         + "\n".join(f"  • {name}" for name in _MISSING_PACKAGES)
         + "\n\nInstall them by running this in Terminal:\n\n"
         + f"    pip3 install {' '.join(_MISSING_PACKAGES)}\n\n"
         "Then relaunch this app.\n\n"
         "(A pre-built .app from this project's own Build script already "
         "includes these — this only applies when running the .py file directly.)",
-    )
+    ).pack()
+    _tk.Button(_root, text="Quit", command=_root.quit).pack(pady=(0, 14))
+    _root.bind("<Return>", lambda _event: _root.quit())
+    _root.mainloop()
     _root.destroy()
     sys.exit(1)
 
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, ttk
 import tkinter as tk
 import tkinter.font as tkfont
 from tkinterdnd2 import COPY, DND_FILES, TkinterDnD
@@ -83,7 +91,7 @@ from operations.post_tools_inbox import WAVE_MANAGER, Batch, InboxPoller, bring_
 from operations.repair_handoff import REPAIR_APP_NAME, is_structure_block, repair_launch_command, structural_damage_hint, structure_block_status, write_handoff
 from operations.riff_inspect import format_structure_brief, inspect_wav
 from operations.metadata_template import build_trk_table_from_ixml_rows, concat_trk_names, expand_metadata_template, find_empty_metadata_tokens, template_token_names, umid_to_pt
-from ui_components import MUTED_TEXT_COLOR, PANEL_BACKGROUND, TEXT_COLOR, ExecutionLogWindow, apply_app_theme, configure_treeview_column_widths
+from ui_components import messagebox, MUTED_TEXT_COLOR, PANEL_BACKGROUND, TEXT_COLOR, ExecutionLogWindow, apply_app_theme, configure_treeview_column_widths
 from ui_components import ExecutionLogPanel, QcInputPicker, TreeviewSorter, UpdateChecker, WorkflowFolderPicker, first_dropped_folder, first_dropped_qc_input, resize_wrapped_label, treeview_cell_sort_key
 
 
@@ -97,7 +105,7 @@ SEND_ACTION_MODES = {
 SEND_ACTION_LABELS = {"split": "Split + Embed", "combine": "Combine / Merge", "rename": "Rename"}
 # The modes whose list takes dropped / sent files.
 SEND_MODE_LABELS = {SEND_ACTION_MODES[action]: label for action, label in SEND_ACTION_LABELS.items()}
-VERSION = "261121.2215"
+VERSION = "261121.2233"
 A_NUMBER_PATTERN = re.compile(r"^(?P<base>.+)\.A(?P<ch>[1-9]\d*)\.wav$", re.IGNORECASE)
 DEFAULT_OUTPUT_FORMULA = "{base}.A$"
 DEFAULT_SOURCE_FORMULA = "{base}.A$"

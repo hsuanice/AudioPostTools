@@ -26,7 +26,7 @@ import tkinter as tk
 import tkinter.font as tkfont
 from pathlib import Path
 from queue import Empty, Queue
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, ttk
 from typing import Optional
 
 MODULE_DIR = Path(__file__).resolve().parent
@@ -47,10 +47,10 @@ from operations.post_tools_inbox import WAVE_REPAIR, Batch, InboxPoller, bring_t
 from operations.rebuild_drafts import ConfirmStore, DraftStore, RebuildDraft
 from operations.audio_recover import TRUNCATED, RecoverPlan, plan_recover, recover_kind, run_recovers
 from operations.ixml_rebuild import CONFIDENCE_LABELS, CONFLICT, INFERRED, NEEDS_REVIEW, OMITTED, ORIGINAL, RECOVERED, RebuildPlan, history_note, plan_rebuild, render_ixml
-from ui_components import ERROR_COLOR, HINT_TEXT_COLOR, INFO_COLOR, PANEL_BACKGROUND, TABLE_BACKGROUND, TEXT_COLOR, WARNING_COLOR, ExecutionLogWindow, TreeviewSorter, UpdateChecker, apply_app_theme, configure_treeview_column_widths
+from ui_components import messagebox, ERROR_COLOR, HINT_TEXT_COLOR, INFO_COLOR, PANEL_BACKGROUND, TABLE_BACKGROUND, TEXT_COLOR, WARNING_COLOR, ExecutionLogWindow, TreeviewSorter, UpdateChecker, apply_app_theme, configure_treeview_column_widths
 
 APP_NAME = "Wave Repair for Post"
-VERSION = "261121.2215"
+VERSION = "261121.2233"
 SETTINGS_PATH = Path.home() / "Library" / "Application Support" / APP_NAME / "settings.json"
 
 MODE_BROWSE = "Browse"

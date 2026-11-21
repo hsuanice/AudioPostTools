@@ -2,6 +2,16 @@
 
 A separate app from Wave Manager for Post, living in the same folder and sharing its `operations/` engine. Wave Manager *manages* WAV files; Wave Repair *rescues* them. Versions follow the same `YYMMDD.HHMM` (Taipei time) convention as Wave Manager.
 
+## 261121.2233 — Messages are drawn by Tk: no more crash after a message closes
+
+hsuanice: Check for Updates said "latest version", and the app quit unexpectedly right after the message closed.
+
+- **Cause:** the native macOS alert behind `tkinter.messagebox`. On this macOS, with a game controller paired (DualSense / DUALSHOCK 4, even when not connected), GameControllerUI attaches a navigation object to every alert; Tk 9.0's autorelease pool then frees it twice, and the app stops with SIGTRAP as soon as the alert closes. A 10-line Tk script with one `showinfo` crashed the same way, so every message in the app could do it, not only the update check.
+- **Fix: every message is now a window drawn by Tk** (`show_dialog` and `messagebox` in `ui_components.py`), with the same calls and answers as `tkinter.messagebox`: showinfo / showwarning / showerror / askyesno / askokcancel. Return presses the default button, Esc cancels, long text scrolls. The app never opens a native alert any more. File and folder pickers stay native (they are not affected). The "missing Python package" window at start-up is a plain Tk window too.
+- **Update Available** has its own buttons (Later / Open Download Page) and shows the release notes as plain text in a scrolling box.
+- The "latest version" answer was correct: the only release so far is a pre-release of the same version, and pre-releases are ignored.
+- Verified: the same real key presses that crashed the native alert (Return / Esc via System Events) closed all six kinds of Tk dialog with the right answers and the app kept running; screenshots checked. 390 tests run, all pass except the one that needs the real broken files (3 new dialog tests).
+
 ## 261121.2215 — Check for Updates; moved to the AudioPostTools repository
 
 - **Check for Updates.** The application menu (next to About and Quit) has **Check for Updates…** and **Check for Updates Automatically** (on by default). The automatic check runs quietly a few seconds after launch, at most once a day, and only speaks up when there is a new version. It reads the releases of `hsuanice/AudioPostTools` on GitHub, looks only at this app's tags (`wrfp-v<version>`), and ignores drafts and pre-releases. A new version shows what changed and opens its download page; the app never replaces itself. The request goes through macOS's `/usr/bin/curl` (macOS's own certificates, so it also works inside the .app) and sends nothing about the user. State: `update_check.json` in the app's Application Support folder. Shared code: `operations/update_check.py`, `UpdateChecker` in `ui_components.py`.

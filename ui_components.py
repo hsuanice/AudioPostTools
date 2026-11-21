@@ -337,7 +337,6 @@ class UpdateChecker:
 
     def _show(self, result: dict, quiet: bool) -> None:
         import webbrowser
-        from tkinter import messagebox
 
         if "error" in result:
             if not quiet:
@@ -350,13 +349,163 @@ class UpdateChecker:
             if not quiet:
                 messagebox.showinfo("Check for Updates", f"{self.app_name} {self.version} is the latest version.", parent=self.root)
             return
-        notes = self.update_check.short_notes(release.notes)
+        # GitHub notes are Markdown; show them as plain text.
+        notes = release.notes.strip().replace("\r\n", "\n").replace("**", "").replace("`", "")
         message = (
             f"{self.app_name} {release.version} is available. You have {self.version}.\n\n"
-            + (f"What's new:\n{notes}\n\n" if notes else "")
-            + "Open the download page?\n\n"
             "Download the zip, unzip it, and replace the app in Applications. "
             "The first time, right-click the new app and choose Open."
         )
-        if messagebox.askyesno("Update Available", message, parent=self.root):
+        choice = show_dialog("Update Available", message, ("Later", "Open Download Page"), cancel="Later", kind="info",
+                             parent=self.root, detail=f"What's new:\n\n{notes}" if notes else "")
+        if choice == "Open Download Page":
             webbrowser.open(release.url)
+
+
+# --- Message dialogs drawn by Tk ------------------------------------------
+# tkinter.messagebox shows a native macOS alert (NSAlert). On recent macOS
+# with a game controller paired (DualSense / DUALSHOCK, even when not
+# connected), GameControllerUI attaches a navigation object to every alert,
+# and Tk's autorelease pool then frees it twice: the app crashes with
+# SIGTRAP right after the alert closes (reproduced with a 10-line Tk script,
+# 2026-11-21). These dialogs are plain Tk windows with the same calls and
+# return values, so the apps never open an NSAlert. File and folder
+# pickers (NSOpenPanel / NSSavePanel) are not affected and stay native.
+
+_DIALOG_KINDS = {
+    "info": ("i", INFO_COLOR),
+    "warning": ("!", WARNING_COLOR),
+    "error": ("×", ERROR_COLOR),
+    "question": ("?", INFO_COLOR),
+}
+
+
+def _dialog_parent(parent):
+    if parent is not None:
+        return parent
+    root = getattr(tk, "_default_root", None)
+    if root is None:
+        root = tk.Tk()
+        root.withdraw()
+    return root
+
+
+def show_dialog(title: str, message: str, buttons: tuple[str, ...] = ("OK",), default: str | None = None,
+                cancel: str | None = None, kind: str = "info", parent=None, detail: str = "") -> str | None:
+    """A modal Tk dialog. Returns the label of the button clicked; `cancel`
+    (or None when there is none) for Esc / the window's close button.
+    Return presses the default button (the last one unless given). Long
+    text, or anything in `detail`, goes into a scrollable read-only box."""
+    owner = _dialog_parent(parent)
+    toplevel = owner.winfo_toplevel()
+    default = default or buttons[-1]
+    window = tk.Toplevel(toplevel)
+    window.withdraw()
+    window.title(title or "")
+    window.configure(background=PANEL_BACKGROUND)
+    window.resizable(False, False)
+    if toplevel.winfo_viewable():
+        window.transient(toplevel)
+    result: dict[str, str | None] = {"value": cancel}
+
+    def close(value: str | None) -> None:
+        result["value"] = value
+        try:
+            window.grab_release()
+        except tk.TclError:
+            pass
+        window.destroy()
+
+    body = tk.Frame(window, background=PANEL_BACKGROUND, padx=18, pady=16)
+    body.pack(fill=tk.BOTH, expand=True)
+    symbol, color = _DIALOG_KINDS.get(kind, _DIALOG_KINDS["info"])
+    tk.Label(body, text=symbol, font=("Helvetica", 22, "bold"), foreground="white", background=color, width=2).grid(row=0, column=0, sticky="n", padx=(0, 14))
+    text_frame = tk.Frame(body, background=PANEL_BACKGROUND)
+    text_frame.grid(row=0, column=1, sticky="nsew")
+    message = str(message or "")
+    long_text = detail or len(message) > 700 or message.count("\n") > 14
+    if long_text and not detail:
+        lead, rest = "", message
+    else:
+        lead, rest = message, str(detail or "")
+    if lead:
+        tk.Label(text_frame, text=lead, justify=tk.LEFT, anchor="w", wraplength=460, foreground=TEXT_COLOR, background=PANEL_BACKGROUND).pack(anchor="w", fill=tk.X)
+    if rest:
+        box = tk.Frame(text_frame, background=PANEL_BACKGROUND)
+        box.pack(fill=tk.BOTH, expand=True, pady=(8 if lead else 0, 0))
+        lines = min(18, max(4, rest.count("\n") + 2 + len(rest) // 70))
+        text = tk.Text(box, width=64, height=lines, wrap=tk.WORD, relief=tk.FLAT, borderwidth=1, highlightthickness=0,
+                       foreground=TEXT_COLOR, background="white", padx=8, pady=6, font="TkDefaultFont")
+        scroll = ttk.Scrollbar(box, orient=tk.VERTICAL, command=text.yview)
+        text.configure(yscrollcommand=scroll.set)
+        text.insert("1.0", rest)
+        text.configure(state=tk.DISABLED)
+        text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scroll.pack(side=tk.RIGHT, fill=tk.Y)
+    button_row = tk.Frame(body, background=PANEL_BACKGROUND)
+    button_row.grid(row=1, column=0, columnspan=2, sticky="e", pady=(16, 0))
+    default_button = None
+    for label in buttons:
+        button = ttk.Button(button_row, text=label, command=lambda value=label: close(value))
+        button.pack(side=tk.LEFT, padx=(8, 0))
+        if label == default:
+            button.configure(default="active")
+            default_button = button
+    body.columnconfigure(1, weight=1)
+
+    window.protocol("WM_DELETE_WINDOW", lambda: close(cancel))
+    window.bind("<Return>", lambda _event: close(default))
+    window.bind("<KP_Enter>", lambda _event: close(default))
+    window.bind("<Escape>", lambda _event: close(cancel))
+
+    window.update_idletasks()
+    width, height = window.winfo_reqwidth(), window.winfo_reqheight()
+    if toplevel.winfo_viewable():
+        x = toplevel.winfo_rootx() + (toplevel.winfo_width() - width) // 2
+        y = toplevel.winfo_rooty() + max(40, (toplevel.winfo_height() - height) // 3)
+    else:
+        x = (window.winfo_screenwidth() - width) // 2
+        y = (window.winfo_screenheight() - height) // 3
+    window.geometry(f"+{max(0, x)}+{max(0, y)}")
+    window.deiconify()
+    window.lift()
+    try:
+        window.grab_set()
+    except tk.TclError:
+        pass
+    (default_button or window).focus_force()
+    window.wait_window()
+    return result["value"]
+
+
+class TkMessageBox:
+    """Same calls and return values as tkinter.messagebox, drawn by Tk
+    (see the note above). Use: `from ui_components import messagebox`."""
+
+    @staticmethod
+    def showinfo(title=None, message=None, **options) -> str:
+        show_dialog(title, message, ("OK",), cancel="OK", kind="info", parent=options.get("parent"), detail=options.get("detail", ""))
+        return "ok"
+
+    @staticmethod
+    def showwarning(title=None, message=None, **options) -> str:
+        show_dialog(title, message, ("OK",), cancel="OK", kind="warning", parent=options.get("parent"), detail=options.get("detail", ""))
+        return "ok"
+
+    @staticmethod
+    def showerror(title=None, message=None, **options) -> str:
+        show_dialog(title, message, ("OK",), cancel="OK", kind="error", parent=options.get("parent"), detail=options.get("detail", ""))
+        return "ok"
+
+    @staticmethod
+    def askyesno(title=None, message=None, **options) -> bool:
+        default = "No" if options.get("default") == "no" else "Yes"
+        return show_dialog(title, message, ("No", "Yes"), default=default, cancel="No", kind="question", parent=options.get("parent"), detail=options.get("detail", "")) == "Yes"
+
+    @staticmethod
+    def askokcancel(title=None, message=None, **options) -> bool:
+        default = "Cancel" if options.get("default") == "cancel" else "OK"
+        return show_dialog(title, message, ("Cancel", "OK"), default=default, cancel="Cancel", kind=options.get("icon", "question") if options.get("icon") in _DIALOG_KINDS else "question", parent=options.get("parent"), detail=options.get("detail", "")) == "OK"
+
+
+messagebox = TkMessageBox()
