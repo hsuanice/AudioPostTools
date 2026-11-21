@@ -84,7 +84,7 @@ from operations.repair_handoff import REPAIR_APP_NAME, is_structure_block, repai
 from operations.riff_inspect import format_structure_brief, inspect_wav
 from operations.metadata_template import build_trk_table_from_ixml_rows, concat_trk_names, expand_metadata_template, find_empty_metadata_tokens, template_token_names, umid_to_pt
 from ui_components import MUTED_TEXT_COLOR, PANEL_BACKGROUND, TEXT_COLOR, ExecutionLogWindow, apply_app_theme, configure_treeview_column_widths
-from ui_components import ExecutionLogPanel, QcInputPicker, TreeviewSorter, WorkflowFolderPicker, first_dropped_folder, first_dropped_qc_input, resize_wrapped_label, treeview_cell_sort_key
+from ui_components import ExecutionLogPanel, QcInputPicker, TreeviewSorter, UpdateChecker, WorkflowFolderPicker, first_dropped_folder, first_dropped_qc_input, resize_wrapped_label, treeview_cell_sort_key
 
 
 APP_NAME = "Wave Manager for Post"
@@ -97,7 +97,7 @@ SEND_ACTION_MODES = {
 SEND_ACTION_LABELS = {"split": "Split + Embed", "combine": "Combine / Merge", "rename": "Rename"}
 # The modes whose list takes dropped / sent files.
 SEND_MODE_LABELS = {SEND_ACTION_MODES[action]: label for action, label in SEND_ACTION_LABELS.items()}
-VERSION = "261121.2103"
+VERSION = "261121.2215"
 A_NUMBER_PATTERN = re.compile(r"^(?P<base>.+)\.A(?P<ch>[1-9]\d*)\.wav$", re.IGNORECASE)
 DEFAULT_OUTPUT_FORMULA = "{base}.A$"
 DEFAULT_SOURCE_FORMULA = "{base}.A$"
@@ -8198,6 +8198,7 @@ class WorkflowApp:
 def main() -> None:
     root = TkinterDnD.Tk()
     WorkflowApp(root)
+    root.update_checker = UpdateChecker(root, APP_NAME, VERSION)  # keep a reference
     root.mainloop()
 
 

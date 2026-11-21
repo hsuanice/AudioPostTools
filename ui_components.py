@@ -271,3 +271,92 @@ def configure_treeview_column_widths(tree: ttk.Treeview, specs: tuple[tuple[str,
     tree.column("#0", width=0, minwidth=0, stretch=False)
     for column, width, is_text in specs:
         tree.column(column, width=width, minwidth=120 if is_text else width, stretch=column == stretch_column, anchor=tk.W if is_text else tk.CENTER)
+
+
+class UpdateChecker:
+    """"Check for Updates…" and "Check for Updates Automatically" in the
+    macOS application menu (next to About / Quit), plus one quiet automatic
+    check a few seconds after launch, at most once a day. The GitHub request
+    runs on a worker thread; its result comes back to Tk through after().
+    A quiet check says nothing unless there is a new version."""
+
+    def __init__(self, root: tk.Tk, app_name: str, version: str) -> None:
+        from operations import update_check
+
+        self.root = root
+        self.app_name = app_name
+        self.version = version
+        self.update_check = update_check
+        self.state_path = update_check.state_path(app_name)
+        self.state = update_check.load_state(self.state_path)
+        self.auto_var = tk.BooleanVar(value=self.state["auto"])
+        self.busy = False
+
+        menubar = tk.Menu(root)
+        app_menu = tk.Menu(menubar, name="apple", tearoff=False)
+        app_menu.add_command(label="Check for Updates…", command=lambda: self.check(quiet=False))
+        app_menu.add_checkbutton(label="Check for Updates Automatically", variable=self.auto_var, command=self._auto_changed)
+        app_menu.add_separator()
+        menubar.add_cascade(menu=app_menu)
+        window_menu = tk.Menu(menubar, name="window", tearoff=False)
+        menubar.add_cascade(menu=window_menu, label="Window")
+        root.configure(menu=menubar)
+        if update_check.auto_check_due(self.state):
+            root.after(4000, lambda: self.check(quiet=True))
+
+    def _auto_changed(self) -> None:
+        self.state["auto"] = bool(self.auto_var.get())
+        self.update_check.save_state(self.state_path, self.state)
+
+    def check(self, quiet: bool) -> None:
+        if self.busy:
+            return
+        self.busy = True
+        import threading
+
+        result: dict = {}
+
+        def work() -> None:
+            try:
+                releases = self.update_check.fetch_releases()
+                result["release"] = self.update_check.newer_release(releases, self.app_name, self.version)
+            except Exception as exc:  # shown only for a manual check
+                result["error"] = str(exc)
+
+        thread = threading.Thread(target=work, daemon=True)
+        thread.start()
+
+        def wait() -> None:
+            if thread.is_alive():
+                self.root.after(200, wait)
+                return
+            self.busy = False
+            self._show(result, quiet)
+
+        self.root.after(200, wait)
+
+    def _show(self, result: dict, quiet: bool) -> None:
+        import webbrowser
+        from tkinter import messagebox
+
+        if "error" in result:
+            if not quiet:
+                messagebox.showwarning("Check for Updates", f"{result['error']}\n\nTry again later, or open:\n{self.update_check.RELEASES_PAGE}", parent=self.root)
+            return
+        self.state["last_check"] = __import__("time").time()
+        self.update_check.save_state(self.state_path, self.state)
+        release = result.get("release")
+        if release is None:
+            if not quiet:
+                messagebox.showinfo("Check for Updates", f"{self.app_name} {self.version} is the latest version.", parent=self.root)
+            return
+        notes = self.update_check.short_notes(release.notes)
+        message = (
+            f"{self.app_name} {release.version} is available. You have {self.version}.\n\n"
+            + (f"What's new:\n{notes}\n\n" if notes else "")
+            + "Open the download page?\n\n"
+            "Download the zip, unzip it, and replace the app in Applications. "
+            "The first time, right-click the new app and choose Open."
+        )
+        if messagebox.askyesno("Update Available", message, parent=self.root):
+            webbrowser.open(release.url)

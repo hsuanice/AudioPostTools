@@ -1,5 +1,12 @@
 # Changelog
 
+## 261121.2215 — Check for Updates; moved to the AudioPostTools repository
+
+- **Check for Updates.** The application menu (next to About and Quit) has **Check for Updates…** and **Check for Updates Automatically** (on by default). The automatic check runs quietly a few seconds after launch, at most once a day, and only speaks up when there is a new version. It reads the releases of `hsuanice/AudioPostTools` on GitHub, looks only at this app's tags (`wmfp-v<version>`), and ignores drafts and pre-releases. A new version shows what changed and opens its download page; the app never replaces itself. The request goes through macOS's `/usr/bin/curl` (macOS's own certificates, so it also works inside the .app) and sends nothing about the user. State: `update_check.json` in the app's Application Support folder. Shared code: `operations/update_check.py`, `UpdateChecker` in `ui_components.py`.
+- **New home: the AudioPostTools repository** (`~/Developer/AudioPostTools`, published on GitHub). `wave_manager.py` was `SoX_Metadata_Workflow.py`; the changelogs moved to `Changelogs/`. Launch scripts now pick the first Python 3 that has tkinterdnd2 and openpyxl (or `AUDIO_POST_TOOLS_PYTHON`) instead of a fixed path on one Mac. The Soundminer "Send to" scripts are no longer maintained (removed); the Post Tools Inbox itself is unchanged.
+- Release tool `.dev/release.py`: checks that the commit is on GitHub, runs the tests, builds the .app, zips it with `ditto`, writes this version's notes, and opens GitHub's new-release page filled in.
+- Verified: the built Wave Manager .app ran its automatic check against GitHub (no release yet, so it stayed quiet and recorded the check); a driven dialog with a mocked newer release showed the notes and opened its page; the same version answered "is the latest version". Full suite passes (6 new update-check tests).
+
 ## 261121.2103 — QC: Poly ↔ Split audio compare about 4x faster; progress log every 5 seconds
 
 hsuanice: Poly ↔ Split compare of 824 files showed "ETA 30m", and the Execution Log stayed silent for minutes between lines.

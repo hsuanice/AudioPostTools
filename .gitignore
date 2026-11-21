@@ -20,3 +20,5 @@
 !/tests/
 /tests/*
 !/tests/*.py
+/.dev/*
+!/.dev/*.py

@@ -20,7 +20,7 @@ Requirements: a Mac with Apple Silicon (M1 or later).
 
 ## Updates
 
-The app checks for a new version on GitHub (once a day, or with **Check for Updates…**). When there is one, it shows what changed and opens the download page. Download the new zip and replace the app in Applications.
+The app checks for a new version on GitHub once a day. You can also check any time: in the menu bar, click the app's name (for example **Wave Manager for Post**) → **Check for Updates…**. Turn the daily check off there with **Check for Updates Automatically**. When there is one, it shows what changed and opens the download page. Download the new zip and replace the app in Applications.
 
 Each release is tagged by app and version: `wmfp-v261121.2036` (Wave Manager for Post), `wrfp-v261003.1312` (Wave Repair for Post). Versions are the release date and time, `YYMMDD.HHMM` (Taipei time). Releases marked **Pre-release** are not tested yet.
 
@@ -55,6 +55,14 @@ These tools are installed separately or bundled by PyInstaller. Each keeps its o
 
 These apps were written by hsuanice with AI coding assistants: Claude and Claude Code (Anthropic). hsuanice designed and tested every feature on real production files.
 
+## Releasing (maintainer)
+
+```sh
+python3 .dev/release.py wmfp        # or wrfp; add --pre for an untested version
+```
+
+It checks that the commit is on GitHub, runs the tests, builds and zips the app, and opens GitHub's new-release page with the tag and notes filled in. Drag the zip onto the page and publish.
+
 ## License
 
-Not chosen yet.
+No license. The apps are shared with friends, free to use. The source code is here to read; all rights reserved.
