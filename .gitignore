@@ -1,0 +1,22 @@
+# Whitelist: only the files listed below are published.
+/*
+!/.gitignore
+!/README.md
+!/Changelogs/
+!/requirements.txt
+!/wave_manager.py
+!/wave_repair.py
+!/.dev/
+!/ui_components.py
+!/Build Wave Manager for Post.command
+!/Build Wave Repair for Post.command
+!/Launch Wave Manager for Post.command
+!/Launch Wave Repair for Post.command
+!/Wave Manager for Post.spec
+!/Wave Repair for Post.spec
+!/operations/
+/operations/*
+!/operations/*.py
+!/tests/
+/tests/*
+!/tests/*.py
